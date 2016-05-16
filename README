@@ -1,0 +1,33 @@
+BUILD
+-----
+To do an initial build, run
+
+    perl Makefile.PL
+    make
+
+This should also kick off a CPAN session if it needs to install any
+dependencies.
+
+This is a Catalyst app using TT2 and Catalyst::Model::DBI -- so
+installing those should net most dependencies.  On my local machine
+(Xubuntu 14.04) many of the installations were done via apt instead
+of CPAN -- however, there should be nothing outside of CPAN needed to
+run this.
+
+RUN
+---
+The simplest way to run is the Catalyst test server -- run
+
+    script/orders_server.pl 
+
+to test the application, and then connect to the application on
+localhost:3000.
+
+This should take you to a "Login" page, see the NOTES file for
+information about that.
+
+There are facilities to run it from apache via fastcgi, and I have
+some experience setting that up, but I'm not going to guarantee that
+this will run in your environment, and I have not tested this application
+like that -- I have only run it via the test server so far.
+

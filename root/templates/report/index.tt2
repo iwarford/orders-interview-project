@@ -1,0 +1,168 @@
+[% MACRO format_money(n) PERL %]
+    my $n = $stash->get('n');
+    $n /= 100;
+    my $number = sprintf "%.2f", $n;
+    # Add one comma each time through the do-nothing loop
+    1 while $number =~ s/^(-?\d+)(\d\d\d)/$1,$2/;
+    # Put the dollar sign in the right place
+    $number =~ s/^(-?)/$1\$/;
+    print $number;
+[% END -%]
+<!doctype html>
+<html><head>
+    <meta charset="utf-8">
+    <title>Order Data Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css" />    
+    <!-- DATA TABLE CSS -->
+    <link href="http://www.prepbootstrap.com/Content/css/single-page-admin/table.css" rel="stylesheet">
+    
+    <script type="text/javascript" src="http://www.prepbootstrap.com/Content/js/single-page-admin/bootstrap.js"></script>
+    <script type="text/javascript" src="http://www.prepbootstrap.com/Content/js/single-page-admin/admin.js"></script>
+    
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+
+    <style type="text/css">
+      body {
+      padding-top: 60px;
+      }
+    </style>
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+	<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+    
+    <!-- Google Fonts call. Font Used Open Sans -->
+    <link href="http://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+
+    <!-- DataTables Initialization -->
+    <script type="text/javascript" src="http://www.prepbootstrap.com/Content/js/single-page-admin/datatables/jquery.dataTables.js"></script>
+    <script type="text/javascript" charset="utf-8">
+      $(document).ready(function () {
+      $('#dt1').dataTable();
+      });
+    </script>
+
+    
+  </head>
+
+  <body>
+    
+    <!-- NAVIGATION MENU -->
+
+    <div class="navbar-nav navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <img src="http://www.prepbootstrap.com/Content/images/shared/single-page-admin/logo30.png" alt="">
+        </div> 
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/"><i class="icon-lock icon-white"></i> Login</a></li>
+            <li><a href="/manage"><i class="icon-home icon-white"></i> Manage</a></li>              
+            <li class="active"><a href="/report"><i class="icon-th icon-white"></i> Report</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- CONTENT -->
+      <div class="row">
+	<div class="col-sm-12 col-lg-12">
+
+
+         [% FOREACH day IN order_data %]
+	 [% daily_total = 0 %]
+	  <h4><strong>[% day.key %]</strong></h4>
+	  <table class="display">
+	    <thead>
+	      <tr>
+	        <th>Order Date</th>
+	        <th>Customer</th>
+	        <th>Order Number</th>
+	        <th>Item</th>
+	        <th>Price</th>
+	      </tr>
+	    </thead>
+	    <tbody>
+	      [% count = 1 %]
+	      [% FOREACH customer IN day.value %]
+	      [% FOREACH order IN customer.value %]
+	      [% order_total = 0 %]
+	      [% order_items = 0 %]
+              [% FOREACH item IN order.value %]
+	      [% PERL %]
+	        my $count = $stash->get('count');
+	        print PERLOUT ($count % 2 == 0) ? "<tr class=\"even\">\n" : "<tr class=\"odd\">\n";
+                $count++;
+                $stash->set('count', $count);
+              [% END %]
+              <td>[% item.order_date %]</td>
+              <td>[% item.last_name %], [% item.first_name %]</td>
+              <td>[% item.order_number %]</td>
+              <td>[% item.item_name %]</td>
+              <td>[% format_money(item.item_price_cents) %]</td>
+              </tr>
+	        [% order_total = order_total + item.item_price_cents %]
+	        [% daily_total = daily_total + item.item_price_cents %]
+		[% order_items = order_items + 1 %]
+	        [% END %]<!-- END FOREACH item -->
+		
+		[% IF order_items > 1 %]
+	      [% PERL %]
+	        my $count = $stash->get('count');
+	        print PERLOUT ($count % 2 == 0) ? "<tr class=\"even\">\n" : "<tr class=\"odd\">\n";
+                $count++;
+                $stash->set('count', $count);
+              [% END %]
+              <td></td>
+              <td></td>
+              <td></td>
+              <td align="right"><b>Order Total</b></td>
+              <td>[% format_money(order_total) %]</td>
+              </tr>
+	      [% END %]<!-- END IF order_items > 1 -->
+              [% END %]<!-- END FOREACH order -->
+              [% END %]<!-- END FOREACH customer -->
+	      [% PERL %]
+	        my $count = $stash->get('count');
+	        print PERLOUT ($count % 2 == 0) ? "<tr class=\"none\">\n" : "<tr class=\"none\">\n";
+                $count++;
+                $stash->set('count', $count);
+              [% END %]
+              <td></td>
+              <td></td>
+              <td></td>
+              <td align="right"><b>DAILY TOTAL</b></td>
+              <td><b>[% format_money(daily_total) %]</b></td>
+              </tr>
+</tbody>
+</table><!--/END First Table -->
+
+          [% END %]<!-- END FOREACH day -->
+
+<!-- FOOTER -->	
+<div id="footerwrap">
+  <footer class="clearfix"></footer>
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-12 col-lg-12">
+      	<p><img src="http://www.prepbootstrap.com/Content/images/shared/single-page-admin/logo.png" alt=""></p>
+      	<p>Blocks Dashboard Theme - Crafted With Love - Copyright 2013</p>
+      </div>
+
+    </div><!-- /row -->
+  </div><!-- /container -->		
+</div><!-- /footerwrap -->
+</body></html>

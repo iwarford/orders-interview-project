@@ -1,0 +1,147 @@
+* Included Files
+Code is in the appropriate places.  The code relating to saving and
+loading orders should be in Orders/DAL/OrdersDAO.pm.  The controller
+code is in the appropriate controller (Orders::Controller::Manage is
+the only involved one).
+
+View logic is mostly in the .tt2 files under root/templates/.
+
+The CSV file should be sitting in the main Orders directory.
+
+The database is under data/orders.db.  The SQL for it is in
+orders.sql in the main Orders directory.
+
+A sample of the final report (printed to PDF) is in Order Data
+Report.pdf.
+
+The README is filled out with the basic information for building and
+running a Catalyst app.
+
+And finally, this is the NOTES file.
+
+* Basic Structure
+
+The application is a fairly straightforward Catalyst application that
+uses TT2 as a View layer, and a thin DBI model as a model layer.  
+
+The database interaction logic is done via traditional DBI calls.
+
+* CSS Template
+
+I grabbed a free Bootstrap theme to use as the base of the
+application.
+
+http://www.prepbootstrap.com/bootstrap-theme/single-page-admin/
+
+There were very few modifications made to it, I simply adapted it's
+features to my needs.
+
+This does load some js files from the server that the theme was
+originally on -- hopefully that's not an issue.
+
+* "Login" page
+
+I originally had started down the path of creating a user system,
+however I decided it wasn't a wise use of time -- and more
+importantly ran the risk that if there was a bug in it (and setting
+up user authentication always seems to go wrong), it could prevent
+you from accessing the application altogether.
+
+So there is a login page, but all that happens when you submit on it
+is that it puts the username into the session, which is displayed for
+cosmetic reasons on the Manage page.  This isn't strictly necessary,
+however if this were to be implemented in reality, there *would* have
+to be some form of user management.
+
+At the very least, there would need to be some kind of guest account
+that could view reports without uploading privileges.  
+
+* Report
+
+The report is simply a series of tables, one for each day, that break
+down the day's orders.  
+
+The day has it's revenue totalled after each table, and each order
+also has it totalled if it had more than one line item.
+
+I didn't opt to total the users, as it was crowded and hard to read
+when I tried it.  It wouldn't be a large change to go back to doing
+that, however.
+
+There is a PDF printing of the report page in the main Orders
+directory.
+
+* Uploading
+
+** Assumptions
+I'm assuming that the CSV data doesn't contain embedded newlines --
+this requires some special setup and handling to deal with in
+Text::CSV, and it didn't seem likely to be required.
+
+** Re-uploads
+
+I attempted an implementation of a solution that was bugging me while
+testing, which was re-uploading of a duplicate CSV file.  Something
+had to stop the obvious mistake of re-uploading and duplicating all
+the records.
+
+My first thought was to reject duplicate records -- where the item,
+timestamp, order and customer were all the same.
+
+However, in most POS systems that actually exist, it's perfectly
+normal to have multiple copies of the same thing on an order.  So
+differentiating between a subsequent upload and a second line in an
+order wasn't obvious, and I didn't have enough information from the
+POS system to outright reject those.
+
+I ended up simply choosing to track the MD5 hashes of each uploaded
+file in a separate table, and simply reject a re-upload of a given
+file. It's not a perfect solution, but it blocks the obvious mistake
+of re-uploading a file again and duplicating all of the records.
+
+* Data Model
+
+** Order ID
+The Order ID wasn't used as the primary key (as in some places it's
+not even an integer), and was simply kept as order_number as an
+external key.  This is the one that is displayed to the user, as
+(presumably) they have access to an external system which gives it
+meaning.  The internal order_id is not displayed in the report.
+
+** Customers
+Customers were normalized into their own table.  Since an ID already
+existed (presumably from some other type of CRM system outside of
+this one), I simply re-used that id as a "customer code" (because I'm
+not making any guarantees about what it could be), and assumed that
+any subsequent records with a customer_id that were already known
+referred to the same customer.
+
+That is, if there are multiple records with the same customer_id, and
+different first names and last names, only the first
+firstname/lastname brought into the system will be used for that
+customer_id.
+
+** Items
+Items were NOT normalized into their own table for a couple of
+reasons.
+
+Firstly, because there is no external ID given to them, so the only way
+to determine uniqueness is through a combination of item name and
+item manufacturer -- which I could do, but doesn't have much point
+because...
+
+secondly, there is no guarantee (and, in any realistic scenario, it's
+very unlikely) that the line item price will remain the same in
+perpitutity.  In that case, the only thing normalized away would be
+the item name, which doesn't net that much of a win.  
+
+It's easier to simply leave it in the line item part of the order,
+since at that point it's more simply a label that will get printed on
+the receipt than any uniquely identifying info.
+
+** upload_log
+
+As mentioned above, this is simply a list of md5sums of files that
+have been uploaded.  If a duplicate file is uploaded, then it is
+rejected.
+
